@@ -25,12 +25,13 @@
 </template>
 
 <script lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import MessageBox from './components/MessageBox.vue';
 import ChatInput from './components/ChatInput.vue';
 
+// 1. نوع ID برای سازگاری با کدهای قبلی اصلاح شد
 interface Message {
-  id: number;
+  id: number | string;
   text: string;
   type: 'sender' | 'receiver';
 }
@@ -45,28 +46,26 @@ export default {
     const messages = ref<Message[]>([]);
     const loading = ref(false);
 
-    // --- START OF CHANGES ---
+    // 2. آدرس بک‌اند شما
+    const backendUrl = 'http://89.251.9.191:8000';
 
-    // 1. آدرس بک‌اند خود را تعریف کنید
-    const backendUrl = 'http://127.0.0.1:8000'; // یا IP عمومی سرور شما
-
-    // 2. تابع sendMessage را برای ارسال درخواست به سرور آپدیت کنید
+    // 3. تابع sendMessage برای ارسال درخواست به سرور
     const sendMessage = async () => {
       if (userInput.value.trim()) {
         const presenterQuestion = userInput.value;
         
-        // پیام مجری را بلافاصله در UI نمایش بده
+        // نمایش فوری پیام مجری در رابط کاربری
         messages.value.push({
-          id: Date.now(),
+          id: 'msg-' + Date.now(),
           text: presenterQuestion,
           type: 'sender'
         });
         
         userInput.value = '';
-        loading.value = true; // نمایشگر لودینگ را فعال کن
+        loading.value = true;
 
         try {
-          // درخواست به endpoint مخصوص مجری ارسال می‌شود
+          // ارسال درخواست به endpoint مخصوص مجری
           const response = await fetch(`${backendUrl}/api/v1/presenter/chat`, {
             method: 'POST',
             headers: {
@@ -84,31 +83,26 @@ export default {
 
           const data = await response.json();
           
-          // پاسخ تحلیلی ربات را در UI نمایش بده
+          // نمایش پاسخ تحلیلی ربات
           messages.value.push({
-            id: Date.now() + 1,
+            id: 'res-' + Date.now(),
             text: data.answer, // فیلد پاسخ 'answer' است
             type: 'receiver'
           });
 
         } catch (error) {
           console.error('Error sending presenter question:', error);
-          // نمایش پیام خطا در چت
           messages.value.push({
             id: 'error-' + Date.now(),
             text: 'خطا در تحلیل داده‌ها. لطفاً اتصال سرور را بررسی کنید.',
             type: 'receiver'
           });
         } finally {
-          loading.value = false; // نمایشگر لودینگ را غیرفعال کن
+          loading.value = false;
         }
       }
     };
     
-    // نیازی به onMounted و fetchMessages برای بارگذاری اولیه نیست
-
-    // --- END OF CHANGES ---
-
     return {
       userInput,
       messages,
