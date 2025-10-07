@@ -45,58 +45,69 @@ export default {
     const messages = ref<Message[]>([]);
     const loading = ref(false);
 
-    const fetchMessages = async () => {
-      loading.value = true;
-      try {
-        const response = await fetch('https://jsonplaceholder.typicode.com/posts?_limit=3');
-        const posts = await response.json();
-        
-        const apiMessages: Message[] = posts.map((post: any, index: number) => ({
-          id: post.id,
-          text: post.title,
-          type: index % 2 === 0 ? 'sender' : 'receiver'
-        }));
+    // --- START OF CHANGES ---
 
-        messages.value = apiMessages;
-      } catch (error) {
-        console.error('Error fetching messages:', error);
-        messages.value = [
-          {
-            id: 1,
-            text: 'خطا در دریافت پیام‌ها. لطفا دوباره تلاش کنید.',
-            type: 'receiver'
-          }
-        ];
-      } finally {
-        loading.value = false;
-      }
-    };
+    // 1. آدرس بک‌اند خود را تعریف کنید
+    const backendUrl = 'http://127.0.0.1:8000'; // یا IP عمومی سرور شما
 
-    const sendMessage = () => {
+    // 2. تابع sendMessage را برای ارسال درخواست به سرور آپدیت کنید
+    const sendMessage = async () => {
       if (userInput.value.trim()) {
-        const newMessage: Message = {
-          id: Date.now(),
-          text: userInput.value,
-          type: 'sender'
-        };
-        messages.value.push(newMessage);
-        userInput.value = '';
+        const presenterQuestion = userInput.value;
         
-        // شبیه‌سازی پاسخ پس از ارسال پیام
-        setTimeout(() => {
-          const responseMessage: Message = {
+        // پیام مجری را بلافاصله در UI نمایش بده
+        messages.value.push({
+          id: Date.now(),
+          text: presenterQuestion,
+          type: 'sender'
+        });
+        
+        userInput.value = '';
+        loading.value = true; // نمایشگر لودینگ را فعال کن
+
+        try {
+          // درخواست به endpoint مخصوص مجری ارسال می‌شود
+          const response = await fetch(`${backendUrl}/api/v1/presenter/chat`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            // بدنه درخواست فقط شامل 'question' است
+            body: JSON.stringify({
+              question: presenterQuestion
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          
+          // پاسخ تحلیلی ربات را در UI نمایش بده
+          messages.value.push({
             id: Date.now() + 1,
-            text: 'پیام شما دریافت شد. من دستیار هوش مصنوعی هستم و در حال حاضر از JSONPlaceholder برای تست استفاده می‌کنم.',
+            text: data.answer, // فیلد پاسخ 'answer' است
             type: 'receiver'
-          };
-          messages.value.push(responseMessage);
-        }, 1000);
+          });
+
+        } catch (error) {
+          console.error('Error sending presenter question:', error);
+          // نمایش پیام خطا در چت
+          messages.value.push({
+            id: 'error-' + Date.now(),
+            text: 'خطا در تحلیل داده‌ها. لطفاً اتصال سرور را بررسی کنید.',
+            type: 'receiver'
+          });
+        } finally {
+          loading.value = false; // نمایشگر لودینگ را غیرفعال کن
+        }
       }
     };
+    
+    // نیازی به onMounted و fetchMessages برای بارگذاری اولیه نیست
 
-    onMounted(() => {
-      fetchMessages();
-    });
+    // --- END OF CHANGES ---
 
     return {
       userInput,
